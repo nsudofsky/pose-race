@@ -12,6 +12,7 @@ Keys:
     2 = left      (left arm raised, right arm down)
     3 = right     (right arm raised, left arm down)
     4 = stop      (both arms down / neutral)
+    5 = reverse   (arms crossed in front of your face)
     0 = pause (stop recording, no label)
     q = quit and save
 
@@ -35,6 +36,7 @@ LABELS = {
     ord("2"): "left",
     ord("3"): "right",
     ord("4"): "stop",
+    ord("5"): "reverse",
 }
 
 CSV_PATH = Path(__file__).parent / "gesture_data.csv"
@@ -52,7 +54,7 @@ def main():
     rows = []
     start_time = time.time()
 
-    print("Recording controls: 1=forward 2=left 3=right 4=stop 0=pause q=quit+save")
+    print("Recording controls: 1=forward 2=left 3=right 4=stop 5=reverse 0=pause q=quit+save")
 
     try:
         while True:
