@@ -2,3 +2,4 @@
 __pycache__/
 *.pyc
 .DS_Store
+models/pose_landmarker_lite.task

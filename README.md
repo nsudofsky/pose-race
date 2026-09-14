@@ -1,4 +1,4 @@
-# lego-arm-racer
+# pose-race
 
 Control a LEGO Education car with arm gestures read from a webcam via
 MediaPipe.
@@ -41,10 +41,62 @@ an `asyncio` event loop on a background thread (see `background_worker.py` /
 thread until that command finishes. So from the app code's point of view it
 is synchronous; underneath, the BLE communication itself is asynchronous.
 
-## Training / limitations
+## Gesture control
 
-(Fill in once gesture recognition is built: what MediaPipe model is used —
-e.g. Hand Landmarker / Pose Landmarker — whether it's used out-of-the-box or
-fine-tuned, what gestures map to what car behavior, and where it breaks down:
-lighting sensitivity, occlusion, latency between camera frame and motor
-command, limited gesture vocabulary, single-person tracking, etc.)
+Three scripts, run in order, all needing a normal Terminal window (not run
+through an AI assistant's sandboxed shell) since they need webcam + display
+access, and the last one needs the double motor powered on nearby:
+
+1. **`collect_gesture_data.py`** — opens the webcam, shows a live preview.
+   Press `1`/`2`/`3`/`4` to start recording examples of `forward`/`left`/
+   `right`/`stop`, `0` to pause, `q` to save everything to `gesture_data.csv`.
+   Move around while recording each gesture — vary your distance from the
+   camera and position in frame — so the classifier doesn't just memorize
+   one exact spot. Aim for at least ~30 seconds (a few hundred frames) per
+   gesture.
+2. **`train_gesture_classifier.py`** — loads `gesture_data.csv`, splits it
+   80/25 into train/test, fits a logistic regression classifier, prints test
+   accuracy and a confusion matrix, and saves the model to
+   `models/gesture_classifier.joblib`.
+3. **`drive_with_gestures.py`** — runs the same webcam + pose pipeline live,
+   feeds each frame's features through the trained classifier, smooths
+   predictions over a 5-frame rolling window (to avoid flicker), and drives
+   the double motor with `movement_move_tank(left%, right%)` accordingly.
+   Press `q` to stop; it disconnects the motor cleanly.
+
+### How it works / how it was trained
+
+We do **not** train the underlying pose model — `pose_features.py` uses
+MediaPipe's pretrained **Pose Landmarker** (`pose_landmarker_lite.task`,
+downloaded automatically on first run) to find 33 body keypoints per frame.
+From those we hand-pick the shoulders, elbows, and wrists, normalize them
+(origin = shoulder midpoint, scale = shoulder width, so it doesn't matter how
+far you stand from the camera) and compute each arm's angle from vertical —
+14 numbers per frame total.
+
+What **is** trained is a small `scikit-learn` **logistic regression**
+classifier on top of those 14 features, fit on data we record ourselves with
+`collect_gesture_data.py`. It's a standard supervised-learning setup: labeled
+examples, a held-out test split, and a reported accuracy — not just
+hand-written if/else thresholds.
+
+### Limitations
+
+- **Small, personal dataset.** It's trained on whoever recorded the data,
+  in one room, under one lighting setup. It won't generalize well to a
+  different person's body proportions, a different camera angle, or a much
+  darker/brighter room without collecting more data there.
+- **Only 2D image-plane features.** Normalizing by shoulder width makes it
+  roughly distance-invariant, but not invariant to camera rotation/tilt or to
+  facing a different direction — turning sideways to the camera changes the
+  apparent arm geometry.
+- **Single person, single pose per frame.** `num_poses=1`; a second person in
+  frame is ignored or confuses shoulder-width normalization if they're closer
+  to the camera.
+- **Latency.** Each frame: pose inference → feature extraction → classifier
+  predict → 5-frame smoothing → BLE command. Smoothing intentionally trades
+  a small delay for fewer spurious direction changes.
+- **Small gesture vocabulary.** Only four classes (forward/left/right/stop);
+  no reverse, no speed control, no combined turn-while-moving gesture.
+- **Fail-safe:** if no person is detected in frame, it defaults to `stop`
+  rather than continuing the last command.
