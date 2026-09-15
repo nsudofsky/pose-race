@@ -18,6 +18,7 @@ connect() instead of card_serial=None (see main() below).
 
 import time
 
+import legoeducation as le
 from lelib import doubleMotor
 
 
@@ -25,7 +26,7 @@ def main():
     dm = doubleMotor()
 
     print("Connecting to double motor...")
-    dm.connect(card_serial=None)  # grabs whichever double motor is nearby
+    dm.connect(card_serial=None, card_color=le.LEGO_COLOR_ORANGE)  # only your orange-card hub
     print("Connected.")
 
     try:

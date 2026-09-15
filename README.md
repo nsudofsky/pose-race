@@ -48,12 +48,12 @@ through an AI assistant's sandboxed shell) since they need webcam + display
 access, and the last one needs the double motor powered on nearby:
 
 1. **`collect_gesture_data.py`** — opens the webcam, shows a live preview.
-   Press `1`/`2`/`3`/`4` to start recording examples of `forward`/`left`/
-   `right`/`stop`, `0` to pause, `q` to save everything to `gesture_data.csv`.
-   Move around while recording each gesture — vary your distance from the
-   camera and position in frame — so the classifier doesn't just memorize
-   one exact spot. Aim for at least ~30 seconds (a few hundred frames) per
-   gesture.
+   Press `1`/`2`/`3`/`4`/`5` to start recording examples of `forward`/`left`/
+   `right`/`stop`/`reverse` (arms crossed in front of your face), `0` to
+   pause, `q` to save everything to `gesture_data.csv`. Move around while
+   recording each gesture — vary your distance from the camera and position
+   in frame — so the classifier doesn't just memorize one exact spot. Aim
+   for at least ~30 seconds (a few hundred frames) per gesture.
 2. **`train_gesture_classifier.py`** — loads `gesture_data.csv`, splits it
    80/25 into train/test, fits a logistic regression classifier, prints test
    accuracy and a confusion matrix, and saves the model to
@@ -62,7 +62,10 @@ access, and the last one needs the double motor powered on nearby:
    feeds each frame's features through the trained classifier, smooths
    predictions over a 5-frame rolling window (to avoid flicker), and drives
    the double motor with `movement_move_tank(left%, right%)` accordingly.
-   Press `q` to stop; it disconnects the motor cleanly.
+   Speed is set independently every frame from how far your hands are from
+   your head (wrist-to-nose distance, normalized by shoulder width) — arms
+   extended drives faster, hands near your head drives slower. Press `q` to
+   stop; it disconnects the motor cleanly.
 
 ### How it works / how it was trained
 
@@ -96,7 +99,8 @@ hand-written if/else thresholds.
 - **Latency.** Each frame: pose inference → feature extraction → classifier
   predict → 5-frame smoothing → BLE command. Smoothing intentionally trades
   a small delay for fewer spurious direction changes.
-- **Small gesture vocabulary.** Only four classes (forward/left/right/stop);
-  no reverse, no speed control, no combined turn-while-moving gesture.
+- **Small gesture vocabulary.** Five classes (forward/left/right/stop/
+  reverse) plus a continuous hand-distance speed control; still no combined
+  turn-while-moving gesture.
 - **Fail-safe:** if no person is detected in frame, it defaults to `stop`
   rather than continuing the last command.
