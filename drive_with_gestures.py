@@ -25,6 +25,14 @@ from pose_features import PoseFeatureExtractor, hand_to_head_distance
 
 MODEL_PATH = Path(__file__).parent / "models" / "gesture_classifier.joblib"
 
+# Both your double motor and single motor use an orange Connection Card and
+# happen to share the same serial (1142) — pinning the serial here is just
+# extra insurance against other orange-card kits nearby in a shared
+# classroom; the device-type check (DoubleMotor vs SingleMotor) already
+# keeps the two from being confused with each other.
+CONNECTION_CARD_COLOR = le.LEGO_COLOR_ORANGE
+CONNECTION_CARD_SERIAL = 1142
+
 # How many recent predictions to vote across before acting — smooths out
 # single-frame misclassifications so the car doesn't twitch.
 SMOOTHING_WINDOW = 5
@@ -142,12 +150,12 @@ def main():
     try:
         print("Connecting to double motor...")
         dm = doubleMotor()
-        dm.connect(card_serial=None, card_color=le.LEGO_COLOR_ORANGE)  # only your orange-card hub
+        dm.connect(card_serial=CONNECTION_CARD_SERIAL, card_color=CONNECTION_CARD_COLOR)
         print("Connected.")
 
         print("Connecting to single motor...")
         sm = singleMotor()
-        sm.connect(card_serial=None, card_color=le.LEGO_COLOR_RED)  # only your red-card hub
+        sm.connect(card_serial=CONNECTION_CARD_SERIAL, card_color=CONNECTION_CARD_COLOR)
         print("Connected.")
     except Exception:
         if dm is not None and dm.connected:
