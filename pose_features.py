@@ -54,6 +54,7 @@ def _ensure_model_downloaded(path):
         path.write_bytes(response.read())
 
 # MediaPipe Pose landmark indices we care about.
+NOSE = 0
 LEFT_SHOULDER, RIGHT_SHOULDER = 11, 12
 LEFT_ELBOW, RIGHT_ELBOW = 13, 14
 LEFT_WRIST, RIGHT_WRIST = 15, 16
@@ -141,3 +142,27 @@ def extract_features(landmarks):
         *ls_n, *rs_n, *le_n, *re_n, *lw_n, *rw_n,
         left_angle, right_angle,
     ], dtype=np.float64)
+
+
+def hand_to_head_distance(landmarks):
+    """Average distance from each wrist to the nose, normalized by shoulder
+    width (same normalization as extract_features, so it stays roughly
+    invariant to how far you stand from the camera).
+
+    Larger value = hands held further from the head. Kept separate from the
+    trained classifier's feature vector — this only drives speed, not
+    direction, so it doesn't affect the model's input shape.
+    """
+    ls = landmarks[LEFT_SHOULDER]
+    rs = landmarks[RIGHT_SHOULDER]
+    nose = landmarks[NOSE]
+    lw = landmarks[LEFT_WRIST]
+    rw = landmarks[RIGHT_WRIST]
+
+    scale = math.hypot(ls.x - rs.x, ls.y - rs.y)
+    if scale < 1e-6:
+        return None
+
+    left_dist = math.hypot(lw.x - nose.x, lw.y - nose.y) / scale
+    right_dist = math.hypot(rw.x - nose.x, rw.y - nose.y) / scale
+    return (left_dist + right_dist) / 2.0
